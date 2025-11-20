@@ -167,9 +167,9 @@
       align-items: center; justify-content: center;
       position: relative; overflow: hidden; padding: 10px;
       
-      /* Mobile Touch Logic */
+      /* Mobile Touch Logic: 'pan-y' allows vertical scroll, but we prevent it via JS on long press */
+      touch-action: pan-y; 
       pointer-events: auto; 
-      touch-action: none; /* Critical: Prevents scrolling when dragging image */
     }
     .pdf-preview img {
       max-width: 100%; max-height: 100%;
@@ -341,7 +341,7 @@
     <!-- Work Area (Grid) -->
     <div class="merge-work-area">
       <div style="margin-bottom: 15px; font-size: 0.9rem; color: var(--muted);">
-        <strong style="color:var(--accent)">Mobile Tip:</strong> Drag the <b>Image</b> to move files. Scroll using the text area.
+        <strong style="color:var(--accent)">Mobile Tip:</strong> <b>Hold (Long Press)</b> the image for 0.5s to unlock dragging.
       </div>
       
       <div id="mergeGrid" class="pdf-grid">
@@ -580,45 +580,38 @@
   }
   function handleDragOver(e) {
     if (e.preventDefault) e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    return false;
-  }
-  function handleDragEnter(e) { this.classList.add('drag-over'); }
-  function handleDragLeave(e) { this.classList.remove('drag-over'); }
-  function handleDragEnd(e) {
-    this.classList.remove('dragging');
-    document.querySelectorAll('.pdf-card').forEach(card => card.classList.remove('drag-over'));
-  }
-  function handleDrop(e) {
-    if (e.stopPropagation) e.stopPropagation();
-    const dropIndex = +this.getAttribute('data-index');
-    if (dragSrcIndex !== null && dragSrcIndex !== dropIndex) {
-      const movedItem = mergeFiles[dragSrcIndex];
-      mergeFiles.splice(dragSrcIndex, 1);
-      mergeFiles.splice(dropIndex, 0, movedItem);
-      renderMergeGrid();
-    }
-    return false;
-  }
-
-  // --- MOBILE TOUCH LOGIC ---
+  // --- MOBILE TOUCH LOGIC (Long Press 0.5s) ---
   let touchDragSrcIndex = null;
+  let longPressTimer = null;
+  let isLongPressActive = false;
 
   function handleTouchStart(e) {
     // Only allow drag if touching the PREVIEW image area
     if (e.target.closest('.pdf-preview')) {
-      touchDragSrcIndex = +this.getAttribute('data-index');
-      this.classList.add('dragging');
+      const card = this;
+      touchDragSrcIndex = +card.getAttribute('data-index');
+      
+      // Start 500ms timer
+      longPressTimer = setTimeout(() => {
+        isLongPressActive = true;
+        card.classList.add('dragging');
+        // Haptic feedback (Vibration) if supported
+        if (navigator.vibrate) navigator.vibrate(50);
+      }, 500);
     }
   }
 
   function handleTouchMove(e) {
-    if (touchDragSrcIndex === null) return;
-    
-    // Prevent scrolling while dragging
-    if (e.target.closest('.pdf-preview')) {
-      e.preventDefault(); 
+    // Case 1: User is scrolling (timer hasn't fired yet)
+    if (!isLongPressActive) {
+      // If user moves finger BEFORE 0.5s, cancel timer (it's a scroll)
+      clearTimeout(longPressTimer);
+      return; 
     }
+
+    // Case 2: Long press active (Drag Mode)
+    // Prevent scrolling while dragging
+    if (e.cancelable) e.preventDefault(); 
 
     // Find element under finger
     const touch = e.touches[0];
@@ -633,16 +626,23 @@
   }
 
   function handleTouchEnd(e) {
-    if (touchDragSrcIndex === null) return;
+    // Always clear timer on release
+    clearTimeout(longPressTimer);
+    
+    if (!isLongPressActive) {
+        // It was just a tap or scroll, do nothing
+        touchDragSrcIndex = null;
+        return;
+    }
 
-    // Find where we dropped
+    // Logic for DROP
     const touch = e.changedTouches[0];
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     const dropCard = target ? target.closest('.pdf-card') : null;
 
     if (dropCard) {
       const dropIndex = +dropCard.getAttribute('data-index');
-      if (dropIndex !== touchDragSrcIndex) {
+      if (dropIndex !== touchDragSrcIndex && touchDragSrcIndex !== null) {
         const movedItem = mergeFiles[touchDragSrcIndex];
         mergeFiles.splice(touchDragSrcIndex, 1);
         mergeFiles.splice(dropIndex, 0, movedItem);
@@ -653,9 +653,9 @@
     // Cleanup
     this.classList.remove('dragging');
     document.querySelectorAll('.pdf-card').forEach(c => c.classList.remove('drag-over'));
+    isLongPressActive = false;
     touchDragSrcIndex = null;
   }
-
 
   // Generate Thumbnail using PDF.js
   const generateThumbnail = async (file) => {
