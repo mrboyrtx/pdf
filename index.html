@@ -1,1 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1, user-scalable=0" /> <!-- Prevent Zoom on double tap -->
+  <title>PDF Mechanic — Ultimate PDF Toolkit</title>
+  <style>
+    :root {
+      --brand: #3b82f6;       /* Primary Blue */
+      --brand-hover: #2563eb;
+      --bg: #0f172a;          /* Dark Background */
+      --panel: #1e293b;       /* Card Background */
+      --border: #334155;      /* Border Color */
+      --muted: #94a3b8;       /* Muted Text */
+      --text: #f8fafc;        /* Main Text */
+      --accent: #10b981;      /* Success Green */
+      --danger: #ef4444;      /* Error Red */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      padding-bottom: 40px;
+      -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    }
+    
+    /* --- Header --- */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid var(--border);
+      position: sticky; top:0; background: rgba(15, 23, 42, 0.95); 
+      backdrop-filter: blur(10px); z-index: 50;
+    }
+    .logo {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--brand), var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-links button {
+      background: transparent; border: none; color: var(--muted);
+      font-weight: 600; cursor: pointer; font-size: 0.95rem;
+      padding: 8px 16px; transition: 0.2s;
+    }
+    .nav-links button:hover { color: var(--text); }
 
+    /* --- Layout Manager --- */
+    .view-section {
+      display: none; /* Hidden by default */
+      padding: 20px; max-width: 1200px; margin: 0 auto;
+      animation: fadeIn 0.4s ease-out;
+    }
+    .view-section.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* --- HOME: Tools Grid --- */
+    .hero { text-align: center; padding: 60px 20px 40px; }
+    .hero h1 {
+      font-size: 3rem; margin: 0 0 16px; line-height: 1.2;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero p { font-size: 1.2rem; color: var(--muted); max-width: 600px; margin: 0 auto 30px; }
+    
+    .tools-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+      gap: 24px; margin-top: 20px;
+    }
+    .tool-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px;
+      transition: all 0.3s ease; cursor: pointer;
+      position: relative; overflow: hidden;
+    }
+    .tool-card:hover {
+      transform: translateY(-5px); border-color: var(--brand);
+      box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.3);
+    }
+    .tool-icon {
+      font-size: 2rem; margin-bottom: 16px; display: inline-block;
+      padding: 12px; background: rgba(59, 130, 246, 0.1);
+      border-radius: 12px; color: var(--brand);
+    }
+    .tool-card h3 { margin: 0 0 8px; font-size: 1.1rem; }
+    .tool-card p { margin: 0; font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+    .badge {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(16, 185, 129, 0.15); color: var(--accent);
+      font-size: 0.75rem; padding: 4px 8px; border-radius: 99px; font-weight: 600;
+    }
+    .badge.soon { background: rgba(148, 163, 184, 0.15); color: var(--muted); }
+
+    /* --- SHARED UI --- */
+    .tool-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .back-btn {
+      background: var(--panel); border: 1px solid var(--border);
+      color: var(--text); padding: 8px 14px; border-radius: 8px;
+      cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;
+    }
+    .back-btn:hover { border-color: var(--brand); color: var(--brand); }
+    .panel-box {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px;
+    }
+    .btn-primary {
+      background: var(--brand); color: white; width: 100%;
+      border: none; padding: 14px; border-radius: 10px;
+      font-weight: 600; font-size: 1rem; cursor: pointer;
+      transition: 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-hover); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+    /* --- COMPRESSOR SPECIFIC --- */
+    .grid-split { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; }
+    .file-area {
+      border: 2px dashed var(--border); border-radius: 12px;
+      padding: 40px; text-align: center; cursor: pointer;
+      transition: 0.2s; position: relative; background: rgba(0,0,0,0.2);
+    }
+    .file-area:hover { border-color: var(--brand); background: rgba(59,130,246,0.05); }
+    input[type="file"] { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor: pointer; }
+    .slider-wrap { margin: 20px 0; }
+    input[type=range] { width: 100%; cursor: pointer; accent-color: var(--brand); }
+    .console-log {
+      background: #000; border: 1px solid var(--border); border-radius: 8px;
+      padding: 16px; height: 250px; overflow-y: auto;
+      font-family: 'Courier New', monospace; font-size: 0.85rem; color: #00d4b3;
+    }
+    .result-card {
+      background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent);
+      padding: 16px; border-radius: 8px; margin-top: 16px; display: none;
+    }
+
+    /* --- MERGE TOOL UI --- */
+    .merge-container {
+      display: grid; grid-template-columns: 1fr 300px; gap: 24px;
+      height: calc(100vh - 140px);
+    }
+    .merge-work-area {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .pdf-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Slightly smaller for mobile */
+      gap: 16px; padding-bottom: 20px;
+    }
+    
+    /* PDF Card Style */
+    .pdf-card {
+      background: #0f172a; border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; position: relative;
+      transition: transform 0.2s, opacity 0.2s; display: flex; flex-direction: column;
+      cursor: grab; user-select: none; /* Important for drag */
+    }
+    
+    /* Drag and Drop Styles */
+    .pdf-card.dragging { opacity: 0.4; border: 2px dashed var(--brand); }
+    .pdf-card.drag-over { border: 2px solid var(--accent); transform: scale(1.02); }
+
+    .pdf-preview {
+      height: 160px; background: #334155; display: flex;
+      align-items: center; justify-content: center;
+      position: relative; overflow: hidden; padding: 10px;
+      
+      /* Mobile Touch Logic */
+      pointer-events: auto; 
+      touch-action: none; /* Critical: Prevents scrolling when dragging image */
+    }
+    .pdf-preview img {
+      max-width: 100%; max-height: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      pointer-events: none; /* Clicks pass to parent */
+    }
+    
+    .pdf-info { padding: 10px; background: #1e293b; border-top: 1px solid var(--border); font-size: 0.85rem; }
+    .pdf-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; font-weight: 500; }
+    
+    .card-controls { display: flex; justify-content: space-between; gap: 4px; }
+    .icon-btn {
+      background: #334155; border: none; color: var(--muted); border-radius: 4px;
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: 0.2s; font-size: 0.9rem;
+    }
+    .icon-btn:hover { background: var(--brand); color: white; }
+    .icon-btn.delete:hover { background: var(--danger); }
+
+    /* Add Button Card */
+    .add-card {
+      border: 2px dashed var(--border); border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 250px; cursor: pointer; transition: 0.2s; color: var(--muted);
+      background: rgba(255,255,255,0.02); position: relative;
+    }
+    .add-card:hover { border-color: var(--brand); color: var(--brand); background: rgba(59, 130, 246, 0.05); }
+    .add-icon { font-size: 3rem; margin-bottom: 10px; }
+
+    /* Sidebar */
+    .merge-sidebar {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; height: fit-content;
+    }
+
+    @media (max-width: 900px) { 
+      .merge-container { grid-template-columns: 1fr; height: auto; } 
+      .grid-split { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2rem; }
+      .pdf-preview { height: 140px; } /* Smaller on mobile */
+    }
+  </style>
+
+  <!-- PDF Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="router('home')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+    PDF Mechanic
+  </div>
+  <div class="nav-links">
+    <button onclick="router('home')">Home</button>
+    <button onclick="router('placeholder', 'About PDF Mechanic')">About</button>
+  </div>
+</header>
+
+<!-- VIEW: HOME PAGE -->
+<main id="view-home" class="view-section active">
+  <div class="hero">
+    <h1>All-in-One PDF Tools</h1>
+    <p>Process documents directly in your browser. No uploads, no server waiting time, 100% private and secure.</p>
+  </div>
+
+  <div class="tools-grid">
+    <div class="tool-card" onclick="router('compress')">
+      <div class="tool-icon">📉</div>
+      <h3>Compress PDF</h3>
+      <p>Reduce file size while maintaining quality.</p>
+      <span class="badge">Active</span>
+    </div>
+
+    <div class="tool-card" onclick="router('merge')">
+      <div class="tool-icon">🔗</div>
+      <h3>Merge PDF</h3>
+      <p>Combine multiple files, rotate pages, and reorder visually.</p>
+      <span class="badge">Active</span>
+    </div>
+
+    <div class="tool-card" onclick="router('placeholder', 'Split PDF')">
+      <div class="tool-icon">✂️</div>
+      <h3>Split PDF</h3>
+      <p>Extract pages or split documents.</p>
+      <span class="badge soon">Soon</span>
+    </div>
+
+    <div class="tool-card" onclick="router('placeholder', 'PDF to JPG')">
+      <div class="tool-icon">🖼️</div>
+      <h3>PDF to JPG</h3>
+      <p>Convert pages to images.</p>
+      <span class="badge soon">Soon</span>
+    </div>
+
+     <div class="tool-card" onclick="router('placeholder', 'Image to PDF')">
+      <div class="tool-icon">📄</div>
+      <h3>Image to PDF</h3>
+      <p>Photos to PDF document.</p>
+      <span class="badge soon">Soon</span>
+    </div>
+
+    <div class="tool-card" onclick="router('placeholder', 'Protect PDF')">
+      <div class="tool-icon">🔒</div>
+      <h3>Protect PDF</h3>
+      <p>Encrypt with password.</p>
+      <span class="badge soon">Soon</span>
+    </div>
+  </div>
+</main>
+
+<!-- VIEW: COMPRESS TOOL -->
+<main id="view-compress" class="view-section">
+  <div class="tool-header">
+    <button class="back-btn" onclick="router('home')">← Back</button>
+    <h2>PDF Compressor</h2>
+  </div>
+
+  <div class="grid-split">
+    <div class="panel-box">
+      <div class="control-group">
+        <div class="file-area">
+          <div style="font-size:2rem; margin-bottom:10px;">📂</div>
+          <div id="fileMsg">Click to select or Drag PDF here</div>
+          <input id="fileInput" type="file" accept="application/pdf" />
+        </div>
+        <div id="fileDetails" style="margin-top:10px; font-size:0.9rem; color:var(--brand);"></div>
+      </div>
+
+      <div class="control-group" style="margin-top:30px;">
+        <label style="color:var(--muted); font-size:0.9rem;">Compression Quality</label>
+        <div class="slider-wrap">
+          <input id="qualitySlider" type="range" min="10" max="100" value="60" step="5" />
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:5px; color:var(--muted);">
+            <span>Smaller Size</span>
+            <span id="qualityVal" style="color:var(--text); font-weight:bold;">60% Quality</span>
+            <span>Better Look</span>
+          </div>
+        </div>
+        <label style="color:var(--muted); font-size:0.9rem; margin-top:15px; display:block;">Resolution Scale</label>
+        <select id="scaleSelect" style="width:100%; padding:10px; background:var(--bg); color:white; border:1px solid var(--border); border-radius:8px; margin-top:5px;">
+          <option value="1.0">1.0x (Standard - Web)</option>
+          <option value="1.5" selected>1.5x (Sharp - Recommended)</option>
+          <option value="2.0">2.0x (Print Quality)</option>
+        </select>
+      </div>
+      <button id="compressBtn" class="btn-primary" style="margin-top:30px;" disabled>Compress PDF Now</button>
+    </div>
+    <div>
+      <div class="panel-box" style="height:100%; display:flex; flex-direction:column;">
+        <div style="margin-bottom:10px; font-weight:600; color:var(--muted);">Processing Log</div>
+        <div id="logArea" class="console-log">System Ready...</div>
+        <div id="resultBox" class="result-card"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- VIEW: MERGE TOOL -->
+<main id="view-merge" class="view-section">
+  <div class="tool-header">
+    <button class="back-btn" onclick="router('home')">← Back</button>
+    <h2>PDF Merger</h2>
+  </div>
+
+  <div class="merge-container">
+    <!-- Work Area (Grid) -->
+    <div class="merge-work-area">
+      <div style="margin-bottom: 15px; font-size: 0.9rem; color: var(--muted);">
+        <strong style="color:var(--accent)">Mobile Tip:</strong> Drag the <b>Image</b> to move files. Scroll using the text area.
+      </div>
+      
+      <div id="mergeGrid" class="pdf-grid">
+        <!-- Add Card is always last -->
+        <div class="add-card">
+          <div class="add-icon">+</div>
+          <div>Add PDF Files</div>
+          <input id="mergeInput" type="file" accept="application/pdf" multiple />
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="merge-sidebar">
+      <h3 style="margin-top:0;">Summary</h3>
+      <div style="margin-bottom:20px; color: var(--muted); font-size: 0.9rem;">
+        Total Files: <span id="totalFiles" style="color:white; font-weight:bold;">0</span>
+      </div>
+      
+      <button id="mergeBtn" class="btn-primary" disabled>Merge PDF Now</button>
+      
+      <div id="mergeStatus" style="margin-top:15px; font-size:0.85rem; color:var(--accent); display:none;">
+        Processing...
+      </div>
+      <div id="mergeDownloadArea" style="margin-top:15px; display:none;"></div>
+    </div>
+  </div>
+</main>
+
+<!-- VIEW: PLACEHOLDER -->
+<main id="view-placeholder" class="view-section" style="text-align:center; padding-top:100px;">
+  <button class="back-btn" onclick="router('home')" style="display:inline-flex; margin-bottom:20px;">← Back to Home</button>
+  <h2 id="ph-title" style="font-size:2.5rem; margin-bottom:10px;">Tool Name</h2>
+  <p style="color:var(--muted); font-size:1.2rem;">This tool is currently under development.</p>
+  <div style="margin-top:30px; padding:20px; background:var(--panel); display:inline-block; border-radius:12px; border:1px dashed var(--border);">
+    🚧 Coming Soon
+  </div>
+</main>
+
+<script>
+  // --- ROUTING ---
+  function router(viewName, toolTitle = '') {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    if (viewName === 'home') {
+      document.getElementById('view-home').classList.add('active');
+      window.scrollTo(0,0);
+    } else if (viewName === 'compress') {
+      document.getElementById('view-compress').classList.add('active');
+    } else if (viewName === 'merge') {
+      document.getElementById('view-merge').classList.add('active');
+    } else {
+      document.getElementById('view-placeholder').classList.add('active');
+      document.getElementById('ph-title').textContent = toolTitle;
+    }
+  }
+
+  // --- COMPRESSOR LOGIC ---
+  const fileInput = document.getElementById('fileInput');
+  const fileMsg = document.getElementById('fileMsg');
+  const fileDetails = document.getElementById('fileDetails');
+  const compressBtn = document.getElementById('compressBtn');
+  const logArea = document.getElementById('logArea');
+  const resultBox = document.getElementById('resultBox');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+  const scaleSelect = document.getElementById('scaleSelect');
+
+  let currentFile = null;
+  let pdfDocProxy = null;
+
+  const log = (msg) => {
+    const line = document.createElement('div');
+    line.textContent = `> ${msg}`;
+    logArea.appendChild(line);
+    logArea.scrollTop = logArea.scrollHeight;
+  };
+  
+  const formatSize = (bytes) => {
+    if(bytes === 0) return '0 B';
+    const k = 1024; const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + ['B', 'KB', 'MB', 'GB'][i];
+  };
+
+  if (qualitySlider) qualitySlider.addEventListener('input', (e) => qualityVal.textContent = `${e.target.value}% Quality`);
+
+  if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+      currentFile = e.target.files[0];
+      pdfDocProxy = null;
+      resultBox.style.display = 'none';
+      logArea.innerHTML = 'System Ready...';
+      if (!currentFile) {
+        fileMsg.textContent = "Click to select or Drag PDF here";
+        fileDetails.textContent = "";
+        compressBtn.disabled = true;
+        return;
+      }
+      fileMsg.textContent = currentFile.name;
+      fileDetails.textContent = `Original Size: ${formatSize(currentFile.size)}`;
+      log(`Loaded: ${currentFile.name}`);
+      compressBtn.disabled = true; 
+      compressBtn.textContent = "Analyzing PDF...";
+      try {
+        const arrayBuffer = await currentFile.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+        pdfDocProxy = await loadingTask.promise;
+        log(`Analysis Complete: ${pdfDocProxy.numPages} Pages found.`);
+        compressBtn.disabled = false;
+        compressBtn.textContent = "Compress PDF Now";
+      } catch (err) {
+        log(`Error: ${err.message}`);
+        fileMsg.textContent = "Error reading PDF";
+      }
+    });
+  }
+
+  if (compressBtn) {
+    compressBtn.addEventListener('click', async () => {
+      if (!pdfDocProxy) return;
+      compressBtn.disabled = true;
+      compressBtn.innerHTML = "Processing... <span style='font-size:0.8em'>(Do not close tab)</span>";
+      log("--- Starting Compression ---");
+      resultBox.style.display = 'none';
+      try {
+        const { PDFDocument } = PDFLib;
+        const newPdfDoc = await PDFDocument.create();
+        const totalPages = pdfDocProxy.numPages;
+        const quality = parseInt(qualitySlider.value) / 100;
+        const scale = parseFloat(scaleSelect.value);
+        for (let i = 1; i <= totalPages; i++) {
+          log(`Rendering Page ${i} of ${totalPages}...`);
+          const page = await pdfDocProxy.getPage(i);
+          const viewport = page.getViewport({ scale: scale });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const imgDataUrl = canvas.toDataURL('image/jpeg', quality);
+          const imgBytes = await fetch(imgDataUrl).then(r => r.arrayBuffer());
+          const jpgImage = await newPdfDoc.embedJpg(imgBytes);
+          const pageWidth = viewport.width / scale;
+          const pageHeight = viewport.height / scale;
+          const newPage = newPdfDoc.addPage([pageWidth, pageHeight]);
+          newPage.drawImage(jpgImage, { x: 0, y: 0, width: pageWidth, height: pageHeight });
+        }
+        log("Finalizing Document...");
+        const pdfBytes = await newPdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const newSize = blob.size;
+        const savings = ((currentFile.size - newSize) / currentFile.size * 100).toFixed(1);
+        log(`COMPLETED. New Size: ${formatSize(newSize)}`);
+        resultBox.innerHTML = `
+          <h3 style="margin:0 0 10px; color:var(--accent)">Success!</h3>
+          <p style="margin:0 0 10px; font-size:0.9rem">Reduced by <b>${savings}%</b></p>
+          <a href="${url}" download="compressed_${currentFile.name}" 
+             style="display:block; background:var(--accent); color:#000; text-align:center; padding:10px; border-radius:6px; text-decoration:none; font-weight:bold;">
+             ⬇️ Download PDF
+          </a>
+        `;
+        resultBox.style.display = 'block';
+      } catch (err) {
+        log(`CRITICAL ERROR: ${err.message}`);
+        console.error(err);
+      } finally {
+        compressBtn.disabled = false;
+        compressBtn.textContent = "Compress PDF Now";
+      }
+    });
+  }
+
+  // --- MERGE TOOL LOGIC (WITH MOBILE TOUCH SUPPORT) ---
+  const mergeInput = document.getElementById('mergeInput');
+  const mergeGrid = document.getElementById('mergeGrid');
+  const mergeBtn = document.getElementById('mergeBtn');
+  const totalFilesEl = document.getElementById('totalFiles');
+  const mergeStatus = document.getElementById('mergeStatus');
+  const mergeDownloadArea = document.getElementById('mergeDownloadArea');
+
+  let mergeFiles = []; 
+  let dragSrcIndex = null; // To track which item is being dragged
+
+  const renderMergeGrid = () => {
+    const addCard = mergeGrid.querySelector('.add-card');
+    mergeGrid.innerHTML = '';
+    
+    mergeFiles.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'pdf-card';
+      card.setAttribute('draggable', 'true');
+      card.setAttribute('data-index', index);
+      
+      card.innerHTML = `
+        <div class="pdf-preview">
+          <img src="${item.thumbUrl || ''}" style="transform: rotate(${item.rotation}deg)" alt="preview">
+        </div>
+        <div class="pdf-info">
+          <div class="pdf-name" title="${item.file.name}">${item.file.name}</div>
+          <div class="card-controls">
+            <button class="icon-btn" onclick="rotateMergeFile(${index})" title="Rotate">↻</button>
+            <button class="icon-btn" onclick="moveFile(${index}, -1)" title="Move Left">←</button>
+            <button class="icon-btn" onclick="moveFile(${index}, 1)" title="Move Right">→</button>
+            <button class="icon-btn delete" onclick="removeMergeFile(${index})" title="Remove">✕</button>
+          </div>
+        </div>
+      `;
+      
+      // Desktop Drag Events
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragover', handleDragOver);
+      card.addEventListener('drop', handleDrop);
+      card.addEventListener('dragenter', handleDragEnter);
+      card.addEventListener('dragleave', handleDragLeave);
+      card.addEventListener('dragend', handleDragEnd);
+
+      // Mobile Touch Events (Attached to the CARD)
+      card.addEventListener('touchstart', handleTouchStart, {passive: false});
+      card.addEventListener('touchmove', handleTouchMove, {passive: false});
+      card.addEventListener('touchend', handleTouchEnd);
+
+      mergeGrid.appendChild(card);
+    });
+    mergeGrid.appendChild(addCard);
+    
+    totalFilesEl.textContent = mergeFiles.length;
+    mergeBtn.disabled = mergeFiles.length < 1;
+  };
+
+  // --- DESKTOP DRAG & DROP ---
+  function handleDragStart(e) {
+    this.classList.add('dragging');
+    dragSrcIndex = +this.getAttribute('data-index');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+  }
+  function handleDragOver(e) {
+    if (e.preventDefault) e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+  }
+  function handleDragEnter(e) { this.classList.add('drag-over'); }
+  function handleDragLeave(e) { this.classList.remove('drag-over'); }
+  function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.pdf-card').forEach(card => card.classList.remove('drag-over'));
+  }
+  function handleDrop(e) {
+    if (e.stopPropagation) e.stopPropagation();
+    const dropIndex = +this.getAttribute('data-index');
+    if (dragSrcIndex !== null && dragSrcIndex !== dropIndex) {
+      const movedItem = mergeFiles[dragSrcIndex];
+      mergeFiles.splice(dragSrcIndex, 1);
+      mergeFiles.splice(dropIndex, 0, movedItem);
+      renderMergeGrid();
+    }
+    return false;
+  }
+
+  // --- MOBILE TOUCH LOGIC ---
+  let touchDragSrcIndex = null;
+
+  function handleTouchStart(e) {
+    // Only allow drag if touching the PREVIEW image area
+    if (e.target.closest('.pdf-preview')) {
+      touchDragSrcIndex = +this.getAttribute('data-index');
+      this.classList.add('dragging');
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (touchDragSrcIndex === null) return;
+    
+    // Prevent scrolling while dragging
+    if (e.target.closest('.pdf-preview')) {
+      e.preventDefault(); 
+    }
+
+    // Find element under finger
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = target ? target.closest('.pdf-card') : null;
+
+    // Visual Feedback
+    document.querySelectorAll('.pdf-card').forEach(c => c.classList.remove('drag-over'));
+    if (card && card !== this) {
+      card.classList.add('drag-over');
+    }
+  }
+
+  function handleTouchEnd(e) {
+    if (touchDragSrcIndex === null) return;
+
+    // Find where we dropped
+    const touch = e.changedTouches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const dropCard = target ? target.closest('.pdf-card') : null;
+
+    if (dropCard) {
+      const dropIndex = +dropCard.getAttribute('data-index');
+      if (dropIndex !== touchDragSrcIndex) {
+        const movedItem = mergeFiles[touchDragSrcIndex];
+        mergeFiles.splice(touchDragSrcIndex, 1);
+        mergeFiles.splice(dropIndex, 0, movedItem);
+        renderMergeGrid();
+      }
+    }
+
+    // Cleanup
+    this.classList.remove('dragging');
+    document.querySelectorAll('.pdf-card').forEach(c => c.classList.remove('drag-over'));
+    touchDragSrcIndex = null;
+  }
+
+
+  // Generate Thumbnail using PDF.js
+  const generateThumbnail = async (file) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
+      const page = await pdf.getPage(1); 
+      const viewport = page.getViewport({ scale: 0.4 }); 
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      return canvas.toDataURL();
+    } catch (e) {
+      console.error("Thumb error", e);
+      return null; 
+    }
+  };
+
+  // Add Files
+  mergeInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    mergeStatus.style.display = 'block';
+    mergeStatus.textContent = 'Generating thumbnails...';
+    
+    for (const file of files) {
+      const thumbUrl = await generateThumbnail(file);
+      mergeFiles.push({
+        file: file,
+        rotation: 0,
+        thumbUrl: thumbUrl
+      });
+    }
+    
+    mergeStatus.style.display = 'none';
+    renderMergeGrid();
+    mergeInput.value = ''; 
+    mergeDownloadArea.style.display = 'none';
+  });
+
+  // Actions
+  window.rotateMergeFile = (index) => {
+    mergeFiles[index].rotation = (mergeFiles[index].rotation + 90) % 360;
+    renderMergeGrid();
+  };
+
+  window.removeMergeFile = (index) => {
+    mergeFiles.splice(index, 1);
+    renderMergeGrid();
+  };
+
+  window.moveFile = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex >= 0 && newIndex < mergeFiles.length) {
+      const temp = mergeFiles[index];
+      mergeFiles[index] = mergeFiles[newIndex];
+      mergeFiles[newIndex] = temp;
+      renderMergeGrid();
+    }
+  };
+
+  // MERGE PROCESS
+  mergeBtn.addEventListener('click', async () => {
+    if (mergeFiles.length === 0) return;
+    
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = "Merging...";
+    mergeStatus.style.display = 'block';
+    mergeStatus.textContent = 'Processing PDF files...';
+    mergeDownloadArea.innerHTML = '';
+
+    try {
+      const { PDFDocument, degrees } = PDFLib;
+      const mergedPdf = await PDFDocument.create();
+
+      for (const item of mergeFiles) {
+        const arrayBuffer = await item.file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+        
+        copiedPages.forEach((page) => {
+          if (item.rotation !== 0) {
+            const existingRotation = page.getRotation().angle;
+            page.setRotation(degrees(existingRotation + item.rotation));
+          }
+          mergedPdf.addPage(page);
+        });
+      }
+
+      const pdfBytes = await mergedPdf.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      mergeStatus.style.display = 'none';
+      mergeDownloadArea.style.display = 'block';
+      mergeDownloadArea.innerHTML = `
+        <a href="${url}" download="merged_document.pdf" class="btn-primary" 
+           style="display:block; text-align:center; text-decoration:none; background:var(--accent);">
+           ⬇️ Download Merged PDF
+        </a>
+        <button onclick="location.reload()" style="background:transparent; border:none; color:var(--muted); width:100%; margin-top:10px; cursor:pointer;">Start Over</button>
+      `;
+      mergeBtn.textContent = "Done!";
+
+    } catch (err) {
+      console.error(err);
+      mergeStatus.innerHTML = `<span style="color:var(--danger)">Error: ${err.message}</span>`;
+      mergeBtn.disabled = false;
+      mergeBtn.textContent = "Try Again";
+    }
+  });
+</script>
+</body>
+</html>
